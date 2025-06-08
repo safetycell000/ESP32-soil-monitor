@@ -41,7 +41,7 @@ void setup() {
       Serial.println("Wake-up: Timer (scheduled)");
       break;
     case ESP_SLEEP_WAKEUP_UNDEFINED:
-      Serial.println("Wake-up: Power-on reset");
+      Serial.println("Wake-up: Power-on reset (initial boot)");
       break;
     default:
       Serial.printf("Wake-up: Other reason (%d)\n", wakeup_reason);
@@ -50,6 +50,13 @@ void setup() {
   
   // ハードウェア初期化
   initializeHardware();
+  
+  // 初回起動時は即座にスリープ
+  if (wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED) {
+    Serial.println("First boot detected - going to sleep immediately");
+    performInitialSleep();
+    return;
+  }
   
   // ボタン押下チェック
   if (checkButtonPress()) {
@@ -136,59 +143,151 @@ void performManualMeasurement() {
 }
 
 void performCalibration() {
-  Serial.println("\n=== SEN0193 Sensor Calibration ===");
+  Serial.println("\n" + String('=', 60));
+  Serial.println("           SEN0193 SENSOR CALIBRATION");
+  Serial.println(String('=', 60));
   Serial.println("DFRobot Capacitive Soil Moisture Sensor calibration.");
   Serial.println("IMPORTANT: Do NOT submerge beyond the red line!");
+  Serial.println("GPIO Pin: " + String(SOIL_SENSOR_PIN) + " (ADC1_CH8)");
+  Serial.println("ADC Resolution: 12-bit (0-4095)");
+  Serial.println("ADC Attenuation: 11dB (0-3.3V)");
   
-  Serial.println("\n1. DRY CALIBRATION (Higher values)");
-  Serial.println("Remove sensor from soil and expose to air.");
-  Serial.println("Expected range: 2600-3000");
-  Serial.println("Press button when ready...");
+  Serial.println("\n=== SMART CALIBRATION MODE ===");
+  Serial.println("System will automatically detect DRY or WET state");
+  Serial.println("Detection thresholds:");
+  Serial.println("- DRY state:  >= 2000 (air exposure)");
+  Serial.println("- WET state:  <= 1800 (water immersion)");
+  Serial.println("- Unclear:    1801-1999 (soil/intermediate)");
   
-  waitForButtonPress();
-  
-  int dryValue = 0;
-  Serial.print("Measuring dry value");
-  for (int i = 0; i < 20; i++) {
-    dryValue += analogRead(SOIL_SENSOR_PIN);
-    Serial.print(".");
-    delay(100);
-  }
-  dryValue /= 20;
-  
-  Serial.printf("\nDry value: %d\n", dryValue);
-  
-  Serial.println("\n2. WET CALIBRATION (Lower values)");
-  Serial.println("Submerge sensor tip in water up to RED LINE (not the electronics!)");
-  Serial.println("Expected range: 1200-1500");
-  Serial.println("Press button when ready...");
-  
-  waitForButtonPress();
-  
-  int wetValue = 0;
-  Serial.print("Measuring wet value");
-  for (int i = 0; i < 20; i++) {
-    wetValue += analogRead(SOIL_SENSOR_PIN);
-    Serial.print(".");
-    delay(100);
-  }
-  wetValue /= 20;
-  
-  Serial.printf("\nWet value: %d\n", wetValue);
-  
-  // NVSに保存
-  preferences.begin("sensor-config", false);
-  preferences.putInt("dry_value", dryValue);
-  preferences.putInt("wet_value", wetValue);
+  // 校正前の既存値を表示
+  preferences.begin("sensor-config", true);
+  int oldDryValue = preferences.getInt("dry_value", 2800);
+  int oldWetValue = preferences.getInt("wet_value", 1300);
   preferences.end();
   
-  Serial.println("\n✓ Calibration saved to NVS");
-  Serial.printf("Range: %d (0%%) to %d (100%%)\n", dryValue, wetValue);
-  Serial.println("Calibration complete. Entering normal operation mode...");
+  Serial.println("\n📋 BEFORE CALIBRATION:");
+  Serial.printf("Previous DRY value:  %d\n", oldDryValue);
+  Serial.printf("Previous WET value:  %d\n", oldWetValue);
+  Serial.printf("Previous range:      %d (span)\n", oldDryValue - oldWetValue);
   
-  // 校正完了後は通常動作に移行
-  delay(2000);
-  performNormalOperation();
+  Serial.println("\n🔧 SENSOR STABILIZATION...");
+  delay(2000); // 安定化待ち
+  
+  // 詳細測定（個別値も表示）
+  Serial.println("\n📊 DETAILED MEASUREMENT (20 samples):");
+  int readings[20];
+  int totalValue = 0;
+  int minVal = 4095, maxVal = 0;
+  
+  for (int i = 0; i < 20; i++) {
+    readings[i] = analogRead(SOIL_SENSOR_PIN);
+    totalValue += readings[i];
+    if (readings[i] < minVal) minVal = readings[i];
+    if (readings[i] > maxVal) maxVal = readings[i];
+    
+    Serial.printf("Sample %2d: %4d", i + 1, readings[i]);
+    if ((i + 1) % 5 == 0) Serial.println(); // 5個ずつ改行
+    else Serial.print("  ");
+    
+    delay(100);
+  }
+  
+  int currentValue = totalValue / 20;
+  int variance = maxVal - minVal;
+  
+  Serial.println("\n📈 MEASUREMENT STATISTICS:");
+  Serial.printf("Average value:    %d\n", currentValue);
+  Serial.printf("Minimum reading:  %d\n", minVal);
+  Serial.printf("Maximum reading:  %d\n", maxVal);
+  Serial.printf("Variance (max-min): %d\n", variance);
+  Serial.printf("Stability: %s\n", variance < 50 ? "GOOD" : variance < 100 ? "FAIR" : "POOR");
+  
+  // 自動判定ロジック
+  Serial.println("\n🤖 AUTOMATIC STATE DETECTION:");
+  Serial.printf("Current reading: %d\n", currentValue);
+  
+  if (currentValue >= 2000) {
+    // DRY状態として校正
+    Serial.println("🌬️  DETECTED: DRY state (air exposure)");
+    Serial.printf("Condition: %d >= 2000 ✅\n", currentValue);
+    Serial.printf("Setting DRY calibration value: %d\n", currentValue);
+    
+    preferences.begin("sensor-config", false);
+    preferences.putInt("dry_value", currentValue);
+    preferences.end();
+    
+    Serial.println("💾 DRY calibration saved to NVS!");
+    Serial.printf("Change: %d → %d (diff: %+d)\n", oldDryValue, currentValue, currentValue - oldDryValue);
+    
+  } else if (currentValue <= 1800) {
+    // WET状態として校正
+    Serial.println("💧 DETECTED: WET state (water immersion)");
+    Serial.printf("Condition: %d <= 1800 ✅\n", currentValue);
+    Serial.printf("Setting WET calibration value: %d\n", currentValue);
+    
+    preferences.begin("sensor-config", false);
+    preferences.putInt("wet_value", currentValue);
+    preferences.end();
+    
+    Serial.println("💾 WET calibration saved to NVS!");
+    Serial.printf("Change: %d → %d (diff: %+d)\n", oldWetValue, currentValue, currentValue - oldWetValue);
+    
+  } else {
+    // 中間値：判定不可
+    Serial.println("❓ UNCLEAR STATE: Value in middle range");
+    Serial.printf("Condition: 1800 < %d < 2000 ❌\n", currentValue);
+    Serial.println("📋 CALIBRATION GUIDANCE:");
+    Serial.println("  For DRY calibration:");
+    Serial.println("  - Remove sensor from soil");
+    Serial.println("  - Expose to air for 30+ seconds");
+    Serial.println("  - Expected reading: >2000");
+    Serial.println("  For WET calibration:");
+    Serial.println("  - Submerge sensor tip in water");
+    Serial.println("  - Up to red line only (not electronics!)");
+    Serial.println("  - Expected reading: <1800");
+    Serial.println("❌ No calibration performed this time.");
+  }
+  
+  // 最終校正値を表示
+  preferences.begin("sensor-config", true);
+  int finalDryValue = preferences.getInt("dry_value", 2800);
+  int finalWetValue = preferences.getInt("wet_value", 1300);
+  preferences.end();
+  
+  Serial.println("\n" + String('-', 60));
+  Serial.println("📊 FINAL CALIBRATION VALUES:");
+  Serial.printf("DRY value (0%% moisture):   %d\n", finalDryValue);
+  Serial.printf("WET value (100%% moisture): %d\n", finalWetValue);
+  Serial.printf("Calibration range:          %d\n", finalDryValue - finalWetValue);
+  Serial.printf("Range quality: %s\n", (finalDryValue - finalWetValue) > 1000 ? "EXCELLENT" : 
+                                       (finalDryValue - finalWetValue) > 500 ? "GOOD" : "POOR");
+  
+  // バリデーション
+  if (finalDryValue <= finalWetValue) {
+    Serial.println("⚠️  CRITICAL WARNING: Invalid calibration range!");
+    Serial.println("   DRY value must be higher than WET value");
+    Serial.println("   Current: DRY=" + String(finalDryValue) + " <= WET=" + String(finalWetValue));
+    Serial.println("   Please recalibrate properly!");
+  } else {
+    Serial.println("✅ Calibration range validation: PASSED");
+  }
+  
+  // 現在値での湿度計算例
+  if (finalDryValue > finalWetValue) {
+    float currentMoisture = map(currentValue, finalDryValue, finalWetValue, 0, 100);
+    currentMoisture = constrain(currentMoisture, 0, 100);
+    Serial.printf("📱 Current moisture (with new calibration): %.1f%%\n", currentMoisture);
+  }
+  
+  Serial.println("\n✅ CALIBRATION PROCESS COMPLETE!");
+  Serial.println("Timestamp: " + String(millis()) + "ms since boot");
+  Serial.println("Going to sleep for 5 minutes...");
+  Serial.println("Will check schedule and resume normal operation on wake-up.");
+  Serial.println(String('=', 60));
+  
+  // 校正完了後は5分スリープ（シンプル・高速）
+  delay(2000); // 2秒でログ確認時間
+  goToSleep(300); // 5分 = 300秒
 }
 
 void waitForButtonPress() {
@@ -451,6 +550,28 @@ int calculateNextWakeTime() {
   Serial.printf("Next wake in %d seconds (at :%02d:00)\n", secondsToTarget, targetMinute % 60);
   
   return secondsToTarget;
+}
+
+void performInitialSleep() {
+  Serial.println("=== Initial Boot Sleep Mode ===");
+  Serial.println("System will sleep until next scheduled measurement time");
+  
+  // 初期設定チェック
+  if (!checkInitialSetup()) {
+    Serial.println("Initial setup required - sleeping for 1 hour");
+    goToSleep(3600); // 1時間後に再起動
+    return;
+  }
+  
+  // WiFi接続して時刻取得
+  if (connectToWiFi()) {
+    int sleepSeconds = calculateNextWakeTime();
+    Serial.printf("Calculated sleep time: %d seconds\n", sleepSeconds);
+    goToSleep(sleepSeconds);
+  } else {
+    Serial.println("WiFi failed - using default 30min sleep");
+    goToSleep(DEFAULT_SLEEP_SECONDS);
+  }
 }
 
 void goToSleep(int sleepSeconds) {
