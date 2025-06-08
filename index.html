@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌱 ESP32 土壌監視システム</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            color: #333;
+            overflow-x: hidden;
+        }
+        
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        .sidebar.closed {
+            left: -280px;
+        }
+        
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: #333;
+        }
+        
+        .sidebar-content {
+            padding: 20px;
+        }
+        
+        .sidebar-section {
+            margin-bottom: 30px;
+        }
+        
+        .sidebar-section h3 {
+            margin-bottom: 15px;
+            color: #555;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .year-selector {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1em;
+            margin-bottom: 15px;
+            transition: border-color 0.3s;
+        }
+        
+        .period-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .period-btn {
+            background: #f8f9fa;
+            border: 2px solid #ddd;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .period-btn:hover {
+            background: #e9ecef;
+        }
+        
+        .period-btn.active {
+            background: #E8F5E8;
+            border-color: #4CAF50;
+        }
+        
+        .calendar-mini {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 3px;
+            margin-bottom: 10px;
+        }
+        
+        .calendar-header-mini {
+            text-align: center;
+            font-weight: bold;
+            padding: 8px 4px;
+            font-size: 0.8em;
+            color: #666;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        .calendar-day-mini {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent;
+        }
+        
+        .calendar-day-mini:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
+        .calendar-day-mini.has-data {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .calendar-day-mini.has-warning {
+            background: #FF9800;
+            color: white;
+        }
+        
+        .calendar-day-mini.has-danger {
+            background: #F44336;
+            color: white;
+        }
+        
+        .calendar-day-mini.selected {
+            border-color: #2196F3;
+            transform: scale(1.15);
+            box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
+        }
+        
+        .month-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 8px;
+        }
+        
+        .month-nav button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        
+        .chart-type-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .chart-type-btn {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            padding: 15px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: left;
+        }
+        
+        .chart-type-btn:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+        }
+        
+        .chart-type-btn.active {
+            background: #E8F5E8;
+            border-color: #4CAF50;
+        }
+        
+        .hamburger {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1001;
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            padding: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1.2em;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: #333;
+        }
+        
+        .close-sidebar {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #333;
+            transition: all 0.3s;
+        }
+        
+        .main-content {
+            margin-left: 280px;
+            padding: 80px 40px 40px 40px;
+            transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            max-width: 1400px;
+            margin-right: auto;
+        }
+        
+        .main-content.collapsed {
+            margin-left: 0;
+        }
+        
+        .header {
+            text-align: center;
+            color: #2d3748;
+            margin-bottom: 40px;
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+        
+        .selected-period-info {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            text-align: center;
+            color: #2d3748;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+        
+        .period-navigation {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .nav-btn {
+            background: #2563eb;
+            border: 1px solid #2563eb;
+            color: #ffffff;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            min-width: 50px;
+            font-weight: 500;
+        }
+        
+        .nav-btn:hover {
+            background: #1d4ed8;
+            border-color: #1d4ed8;
+            transform: translateY(-1px);
+        }
+        
+        .nav-btn:active {
+            transform: translateY(0);
+        }
+        
+        .period-navigation h3 {
+            margin: 0;
+            flex: 1;
+        }
+        
+        .chart-container {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+        
+        .chart-container canvas {
+            max-height: 450px !important;
+        }
+        
+        .heatmap-container {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            overflow-x: auto;
+        }
+        
+        .heatmap {
+            display: grid;
+            grid-template-columns: 60px repeat(31, 22px);
+            gap: 3px;
+            min-width: 750px;
+        }
+        
+        .heatmap-month {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .heatmap-day {
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        
+        .heatmap-day:hover {
+            transform: scale(1.3);
+            z-index: 10;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .heatmap-day.level-0 { background: #f8f9fa; }
+        .heatmap-day.level-1 { background: #c8e6ff; }
+        .heatmap-day.level-2 { background: #85c1ff; }
+        .heatmap-day.level-3 { background: #4d9dff; }
+        .heatmap-day.level-4 { background: #0066cc; }
+        
+        .status-indicator {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .status-indicator.no-data {
+            background: #f8f9fa;
+            color: #666;
+        }
+        
+        .status-indicator.loading {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .status-indicator.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .sidebar {
+                width: 280px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="hamburger" onclick="toggleSidebar()">☰</button>
+    
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>🌱 コントロール</h2>
+            <button class="close-sidebar" onclick="closeSidebar()">×</button>
+        </div>
+        
+        <div class="sidebar-content">
+            <div class="sidebar-section">
+                <h3>📅 期間選択</h3>
+                <select class="year-selector" id="yearSelector" onchange="changeYear()">
+                    <option value="2024">2024年</option>
+                </select>
+                
+                <div class="period-selector">
+                    <div class="period-btn active" onclick="selectPeriod('day')">📅 日別表示</div>
+                    <div class="period-btn" onclick="selectPeriod('week')">📆 週別表示</div>
+                    <div class="period-btn" onclick="selectPeriod('month')">🗓️ 月別表示</div>
+                </div>
+                
+                <div class="month-nav">
+                    <button onclick="changeMonth(-1)">◀</button>
+                    <span id="currentMonth">12月</span>
+                    <button onclick="changeMonth(1)">▶</button>
+                </div>
+                
+                <div class="calendar-mini" id="miniCalendar">
+                </div>
+            </div>
+            
+            <div class="sidebar-section">
+                <h3>📊 表示設定</h3>
+                <div class="chart-type-selector">
+                    <div class="chart-type-btn active" onclick="selectChartType('timeline')">
+                        <h4>📈 時系列グラフ</h4>
+                        <p>基本的な湿度変化</p>
+                    </div>
+                    <div class="chart-type-btn" onclick="selectChartType('heatmap')">
+                        <h4>🔥 ヒートマップ</h4>
+                        <p>年間カレンダー表示</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-content" id="mainContent">
+        <div class="header">
+            <h1>🌱 ESP32 土壌監視システム</h1>
+            <p>リアルタイム土壌水分監視ダッシュボード</p>
+        </div>
+        
+        <div class="selected-period-info">
+            <div class="period-navigation">
+                <button class="nav-btn" id="prevPeriod" onclick="navigatePeriod(-1)">◀️</button>
+                <h3 id="selectedPeriodTitle" style="color: #2d3748;">📅 データ読み込み中...</h3>
+                <button class="nav-btn" id="nextPeriod" onclick="navigatePeriod(1)">▶️</button>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 16px;">
+                <div style="background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 4px 16px rgba(31, 38, 135, 0.15);">
+                    <div style="color: #6b7280; font-size: 0.875rem; margin-bottom: 8px; font-weight: 500;">平均湿度</div>
+                    <div id="avgMoisture" style="color: #2563eb; font-size: 1.75rem; font-weight: 700;">--</div>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 4px 16px rgba(31, 38, 135, 0.15);">
+                    <div style="color: #6b7280; font-size: 0.875rem; margin-bottom: 8px; font-weight: 500;">データ数</div>
+                    <div id="dataCount" style="color: #059669; font-size: 1.75rem; font-weight: 700;">--</div>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 4px 16px rgba(31, 38, 135, 0.15);">
+                    <div style="color: #6b7280; font-size: 0.875rem; margin-bottom: 8px; font-weight: 500;">最終更新</div>
+                    <div id="lastUpdate" style="color: #7c3aed; font-size: 1.75rem; font-weight: 700;">--</div>
+                </div>
+            </div>
+            
+            <div class="status-indicator loading" id="statusIndicator">
+                📡 データを読み込み中...
+            </div>
+        </div>
+        
+        <div class="heatmap-container" id="heatmapContainer" style="display: none;">
+            <h3>🔥 年間湿度ヒートマップ</h3>
+            <div class="heatmap" id="heatmap">
+            </div>
+            <div style="margin-top: 15px; font-size: 0.9em; color: #666;">
+                📊 実際のESP32センサーデータに基づく表示
+            </div>
+        </div>
+        
+        <div class="chart-container" id="chartContainer">
+            <h3 id="chartTitle">📊 時系列データ</h3>
+            <canvas id="moistureChart"></canvas>
+        </div>
+    </div>
+    
+    <script>
+        let chart;
+        let allData = [];
+        let currentYear = 2024;
+        let currentMonth = 12;
+        let selectedDate = null;
+        let selectedPeriod = 'day';
+        let currentChartType = 'timeline';
+        
+        async function loadData() {
+            try {
+                document.getElementById('statusIndicator').textContent = '📡 データを読み込み中...';
+                document.getElementById('statusIndicator').className = 'status-indicator loading';
+                
+                const response = await fetch('data/soil-data.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                allData = Array.isArray(data) ? data : [];
+                
+                console.log('Data loaded:', allData.length, 'records');
+                
+                if (allData.length === 0) {
+                    document.getElementById('statusIndicator').textContent = '📊 データがありません';
+                    document.getElementById('statusIndicator').className = 'status-indicator no-data';
+                    document.getElementById('selectedPeriodTitle').textContent = '📊 データ待機中';
+                } else {
+                    document.getElementById('statusIndicator').textContent = `✅ ${allData.length}件のデータを読み込み完了`;
+                    document.getElementById('statusIndicator').className = 'status-indicator';
+                    document.getElementById('statusIndicator').style.background = '#e8f5e8';
+                    document.getElementById('statusIndicator').style.color = '#2e7d32';
+                    
+                    // 最新データの日付を初期選択日に設定
+                    const latestData = allData[allData.length - 1];
+                    const latestDate = new Date(latestData.timestamp);
+                    currentYear = latestDate.getFullYear();
+                    currentMonth = latestDate.getMonth() + 1;
+                    selectedDate = latestData.timestamp.substring(0, 10);
+                }
+                
+                initializeCalendar();
+                updateChart();
+                updateSelectedPeriodInfo();
+                
+            } catch (error) {
+                console.error('Failed to load data:', error);
+                document.getElementById('statusIndicator').textContent = '❌ データ読み込みエラー';
+                document.getElementById('statusIndicator').className = 'status-indicator error';
+                document.getElementById('chartTitle').textContent = '❌ データ読み込みエラー';
+                document.getElementById('selectedPeriodTitle').textContent = '❌ エラー';
+            }
+        }
+        
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar.classList.contains('closed')) {
+                openSidebar();
+            } else {
+                closeSidebar();
+            }
+        }
+        
+        function openSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            sidebar.classList.remove('closed');
+            if (window.innerWidth > 768) {
+                mainContent.classList.remove('collapsed');
+            }
+        }
+        
+        function closeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            sidebar.classList.add('closed');
+            mainContent.classList.add('collapsed');
+        }
+        
+        function selectPeriod(period) {
+            selectedPeriod = period;
+            document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            updateSelectedPeriodInfo();
+            updateChart();
+            updateNavigationButtons();
+        }
+        
+        function changeYear() {
+            const yearSelector = document.getElementById('yearSelector');
+            currentYear = parseInt(yearSelector.value);
+            initializeCalendar();
+            updateChart();
+        }
+        
+        function changeMonth(delta) {
+            currentMonth += delta;
+            if (currentMonth < 1) {
+                currentMonth = 12;
+                currentYear--;
+            } else if (currentMonth > 12) {
+                currentMonth = 1;
+                currentYear++;
+            }
+            document.getElementById('yearSelector').value = currentYear;
+            updateMonthDisplay();
+            initializeCalendar();
+        }
+        
+        function updateMonthDisplay() {
+            const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+            document.getElementById('currentMonth').textContent = months[currentMonth - 1];
+        }
+        
+        function initializeCalendar() {
+            updateMonthDisplay();
+            generateMiniCalendar();
+            if (currentChartType === 'heatmap') {
+                generateHeatmap();
+            }
+        }
+        
+        function generateMiniCalendar() {
+            const calendar = document.getElementById('miniCalendar');
+            calendar.innerHTML = '';
+            
+            const headers = ['日', '月', '火', '水', '木', '金', '土'];
+            headers.forEach(header => {
+                const div = document.createElement('div');
+                div.className = 'calendar-header-mini';
+                div.textContent = header;
+                calendar.appendChild(div);
+            });
+            
+            const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+            const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay();
+            
+            for (let i = 0; i < firstDay; i++) {
+                const div = document.createElement('div');
+                div.className = 'calendar-day-mini';
+                calendar.appendChild(div);
+            }
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const div = document.createElement('div');
+                div.className = 'calendar-day-mini';
+                div.textContent = day;
+                
+                const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                
+                // データがある日をハイライト
+                const dayData = allData.filter(item => item.timestamp.startsWith(dateStr));
+                if (dayData.length > 0) {
+                    div.classList.add('has-data');
+                }
+                
+                if (selectedDate === dateStr) {
+                    div.classList.add('selected');
+                }
+                
+                div.addEventListener('click', () => selectDate(dateStr));
+                calendar.appendChild(div);
+            }
+        }
+        
+        function getPeriodData(dateStr, period) {
+            if (!allData || allData.length === 0) return [];
+            
+            switch(period) {
+                case 'day':
+                    return allData.filter(item => item.timestamp.startsWith(dateStr));
+                case 'week':
+                    const startDate = new Date(dateStr);
+                    const endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+                    return allData.filter(item => {
+                        const itemDate = new Date(item.timestamp);
+                        return itemDate >= startDate && itemDate < endDate;
+                    });
+                case 'month':
+                    const monthStr = dateStr.substring(0, 7);
+                    return allData.filter(item => item.timestamp.startsWith(monthStr));
+                default:
+                    return [];
+            }
+        }
+        
+        function selectDate(dateStr) {
+            selectedDate = dateStr;
+            updateSelectedPeriodInfo();
+            initializeCalendar();
+            updateChart();
+            updateNavigationButtons();
+        }
+        
+        function navigatePeriod(direction) {
+            if (!selectedDate) return;
+            
+            const currentDate = new Date(selectedDate);
+            let newDate;
+            
+            switch(selectedPeriod) {
+                case 'day':
+                    newDate = new Date(currentDate.getTime() + direction * 24 * 60 * 60 * 1000);
+                    break;
+                case 'week':
+                    newDate = new Date(currentDate.getTime() + direction * 7 * 24 * 60 * 60 * 1000);
+                    break;
+                case 'month':
+                    newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + direction, currentDate.getDate());
+                    if (newDate.getDate() !== currentDate.getDate()) {
+                        newDate = new Date(newDate.getFullYear(), newDate.getMonth() + 1, 0);
+                    }
+                    break;
+                default:
+                    return;
+            }
+            
+            const newDateStr = newDate.toISOString().substring(0, 10);
+            currentYear = newDate.getFullYear();
+            currentMonth = newDate.getMonth() + 1;
+            selectDate(newDateStr);
+            updateNavigationButtons();
+        }
+        
+        function updateNavigationButtons() {
+            // 実装省略 - 必要に応じて追加
+        }
+        
+        function updateSelectedPeriodInfo() {
+            if (!selectedDate) return;
+            
+            const date = new Date(selectedDate);
+            const periodData = getPeriodData(selectedDate, selectedPeriod);
+            
+            let avgMoisture = 0;
+            let dataCount = 0;
+            let lastUpdate = '--';
+            let title = '';
+            
+            if (periodData.length > 0) {
+                avgMoisture = Math.round(periodData.reduce((sum, item) => sum + item.moisture_percent, 0) / periodData.length);
+                dataCount = periodData.length;
+                const latest = periodData[periodData.length - 1];
+                lastUpdate = new Date(latest.timestamp).toLocaleString('ja-JP', {month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'});
+            }
+            
+            switch(selectedPeriod) {
+                case 'day':
+                    title = `📅 ${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日のデータ`;
+                    break;
+                case 'week':
+                    const endDate = new Date(date.getTime() + 6 * 24 * 60 * 60 * 1000);
+                    title = `📆 ${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日〜${endDate.getDate()}日の週間データ`;
+                    break;
+                case 'month':
+                    title = `🗓️ ${date.getFullYear()}年${date.getMonth() + 1}月の月間データ`;
+                    break;
+            }
+            
+            document.getElementById('selectedPeriodTitle').textContent = title;
+            document.getElementById('avgMoisture').textContent = avgMoisture > 0 ? `${avgMoisture}%` : '--';
+            document.getElementById('dataCount').textContent = dataCount;
+            document.getElementById('lastUpdate').textContent = lastUpdate;
+        }
+        
+        function selectChartType(type) {
+            currentChartType = type;
+            
+            document.querySelectorAll('.chart-type-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.closest('.chart-type-btn').classList.add('active');
+            
+            document.getElementById('chartContainer').style.display = 
+                type === 'timeline' ? 'block' : 'none';
+            document.getElementById('heatmapContainer').style.display = 
+                type === 'heatmap' ? 'block' : 'none';
+            
+            if (type === 'heatmap') {
+                generateHeatmap();
+            } else {
+                updateChart();
+            }
+        }
+        
+        function generateHeatmap() {
+            const heatmap = document.getElementById('heatmap');
+            heatmap.innerHTML = '';
+            
+            const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+            
+            for (let month = 1; month <= 12; month++) {
+                const monthDiv = document.createElement('div');
+                monthDiv.className = 'heatmap-month';
+                monthDiv.textContent = months[month - 1];
+                heatmap.appendChild(monthDiv);
+                
+                const daysInMonth = new Date(currentYear, month, 0).getDate();
+                
+                for (let day = 1; day <= 31; day++) {
+                    const dayDiv = document.createElement('div');
+                    dayDiv.className = 'heatmap-day';
+                    
+                    if (day <= daysInMonth) {
+                        const dateStr = `${currentYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        const dayData = getPeriodData(dateStr, 'day');
+                        
+                        if (dayData.length > 0) {
+                            const avgMoisture = dayData.reduce((sum, item) => sum + item.moisture_percent, 0) / dayData.length;
+                            
+                            if (avgMoisture >= 80) {
+                                dayDiv.classList.add('level-4');
+                            } else if (avgMoisture >= 60) {
+                                dayDiv.classList.add('level-3');
+                            } else if (avgMoisture >= 40) {
+                                dayDiv.classList.add('level-2');
+                            } else if (avgMoisture >= 20) {
+                                dayDiv.classList.add('level-1');
+                            } else {
+                                dayDiv.classList.add('level-0');
+                            }
+                            
+                            dayDiv.title = `${month}/${day}: ${Math.round(avgMoisture)}%`;
+                            dayDiv.addEventListener('click', () => selectDate(dateStr));
+                        } else {
+                            dayDiv.classList.add('level-0');
+                        }
+                    } else {
+                        dayDiv.classList.add('level-0');
+                    }
+                    
+                    heatmap.appendChild(dayDiv);
+                }
+            }
+        }
+        
+        function updateChart() {
+            if (allData.length === 0 || currentChartType === 'heatmap') return;
+            
+            if (chart) {
+                chart.destroy();
+            }
+            
+            const ctx = document.getElementById('moistureChart').getContext('2d');
+            const chartData = createTimelineChart();
+            document.getElementById('chartTitle').textContent = '📊 土壌水分量変化';
+            
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: '土壌水分量 (%)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '時刻'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createTimelineChart() {
+            const data = getPeriodData(selectedDate, selectedPeriod);
+            
+            let labels;
+            
+            switch(selectedPeriod) {
+                case 'day':
+                    labels = data.map(item => {
+                        const date = new Date(item.timestamp);
+                        return date.toLocaleTimeString('ja-JP', {hour: '2-digit', minute: '2-digit'});
+                    });
+                    break;
+                case 'week':
+                    labels = data.filter((_, index) => index % 16 === 0).map(item => {
+                        const date = new Date(item.timestamp);
+                        return date.toLocaleDateString('ja-JP', {month: '2-digit', day: '2-digit'});
+                    });
+                    break;
+                case 'month':
+                    labels = data.filter((_, index) => index % 48 === 0).map(item => {
+                        const date = new Date(item.timestamp);
+                        return date.toLocaleDateString('ja-JP', {month: '2-digit', day: '2-digit'});
+                    });
+                    break;
+            }
+            
+            let displayData;
+            
+            switch(selectedPeriod) {
+                case 'day':
+                    displayData = data.map(item => item.moisture_percent);
+                    break;
+                case 'week':
+                    displayData = data.filter((_, index) => index % 16 === 0).map(item => item.moisture_percent);
+                    break;
+                case 'month':
+                    displayData = data.filter((_, index) => index % 48 === 0).map(item => item.moisture_percent);
+                    break;
+            }
+            
+            return {
+                labels: labels,
+                datasets: [
+                    {
+                        label: '土壌水分量',
+                        data: displayData,
+                        borderColor: '#2196F3',
+                        backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }
+                ]
+            };
+        }
+        
+        window.addEventListener('resize', function() {
+            if (window.innerWidth <= 768) {
+                document.getElementById('mainContent').classList.remove('shifted');
+            }
+        });
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            selectedDate = today.toISOString().substring(0, 10);
+            currentYear = today.getFullYear();
+            currentMonth = today.getMonth() + 1;
+            
+            loadData();
+        });
+    </script>
+</body>
+</html>

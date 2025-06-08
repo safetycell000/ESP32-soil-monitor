@@ -1,0 +1,70 @@
+name: Update Soil Data
+
+on:
+  repository_dispatch:
+    types: [soil_data]
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Update soil data
+      run: |
+        echo "Received data from ESP32:"
+        echo "Raw value: ${{ github.event.client_payload.raw_value }}"
+        echo "Moisture percent: ${{ github.event.client_payload.moisture_percent }}"
+        echo "Timestamp: ${{ github.event.client_payload.timestamp }}"
+        
+        # JSONファイルを読み込み
+        if [ ! -f "data/soil-data.json" ]; then
+          echo "[]" > data/soil-data.json
+        fi
+        
+        # ESP32から受信したデータを使用
+        RAW_VALUE="${{ github.event.client_payload.raw_value }}"
+        MOISTURE_PERCENT="${{ github.event.client_payload.moisture_percent }}"
+        ESP32_TIMESTAMP="${{ github.event.client_payload.timestamp }}"
+        
+        # JSONデータを追加
+        node -e "
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('data/soil-data.json', 'utf8'));
+          
+          // ESP32のtimestampをISO形式に変換
+          const esp32Time = parseInt('$ESP32_TIMESTAMP');
+          const timestamp = new Date(esp32Time * 1000).toISOString();
+          
+          const newEntry = {
+            timestamp: timestamp,
+            raw_value: parseInt('$RAW_VALUE'),
+            moisture_percent: parseFloat('$MOISTURE_PERCENT')
+          };
+          data.push(newEntry);
+          
+          // 最新1000件のみ保持（メモリ節約）
+          if (data.length > 1000) {
+            data.splice(0, data.length - 1000);
+          }
+          
+          fs.writeFileSync('data/soil-data.json', JSON.stringify(data, null, 2));
+          console.log('Data updated successfully. Total records:', data.length);
+        "
+        
+        echo "Data file updated!"
+        
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add data/soil-data.json
+        git commit -m "Update soil data - $(date -u +"%Y-%m-%d %H:%M:%S UTC")" || exit 0
+        git push
