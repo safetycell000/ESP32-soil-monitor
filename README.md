@@ -24,7 +24,7 @@
 ```
 ESP32-S3 Development Board
 ├── GPIO9: 静電容量式土壌湿度センサー (DFRobot SEN0193)
-├── GPIO21: 手動校正/ウェイクボタン
+├── GPIO2: 手動操作ボタン (校正/臨時計測)
 ├── WiFi: データ送信用
 └── Deep Sleep: 省電力動作
 ```
@@ -131,8 +131,12 @@ http://localhost:8080/final-dashboard.html
 ### ESP32設定
 ```cpp
 const int SOIL_SENSOR_PIN = 9;           // センサーピン (GPIO9/ADC1_CH8)
+const int BUTTON_PIN = 2;                // 操作ボタン (GPIO2)
 const int SLEEP_TIME_SECONDS = 1800;     // 30分間隔
-const int BUTTON_PIN = 21;               // 校正ボタン
+
+// ボタン操作仕様
+// 短押し（1秒未満）: 臨時計測・データ送信
+// 長押し（1秒以上）: センサーキャリブレーション
 ```
 
 ### 校正値（NVS保存）
@@ -173,7 +177,7 @@ python3 generate_seasonal_demo.py
 
 #### 2. センサー値が異常
 ```
-解決策: GPIO21ボタンで校正実行
+解決策: GPIO2ボタン長押し（1秒以上）で校正実行
 ```
 
 #### 3. データが送信されない
