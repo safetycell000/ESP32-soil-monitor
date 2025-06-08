@@ -335,10 +335,32 @@
         }
         
         .heatmap {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-width: 750px;
+        }
+        
+        .heatmap-year {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .heatmap-year-grid {
             display: grid;
             grid-template-columns: 60px repeat(31, 22px);
             gap: 3px;
-            min-width: 750px;
+            margin: 0 auto;
+            justify-self: center;
+        }
+        
+        .heatmap-year-header {
+            text-align: center !important;
+            width: 100% !important;
+            margin: 0 auto !important;
+            display: block !important;
         }
         
         .heatmap-month {
@@ -419,8 +441,7 @@
             <div class="sidebar-section">
                 <h3>📅 期間選択</h3>
                 <select class="year-selector" id="yearSelector" onchange="changeYear()">
-                    <option value="2024">2024年</option>
-                    <option value="2025" selected>2025年</option>
+                    <!-- Years will be dynamically generated -->
                 </select>
                 
                 <div class="period-selector">
@@ -544,6 +565,7 @@
                     selectedDate = latestData.timestamp.substring(0, 10);
                 }
                 
+                initializeYearSelector(); // データ読み込み後に年セレクターを更新
                 initializeCalendar();
                 updateChart();
                 updateSelectedPeriodInfo();
@@ -682,8 +704,17 @@
                         return itemDate >= startDate && itemDate < endDate;
                     });
                 case 'month':
-                    const monthStr = dateStr.substring(0, 7);
-                    return allData.filter(item => item.timestamp.startsWith(monthStr));
+                    // 月表示では指定月の全データを取得（年またぎ対応）
+                    const date = new Date(dateStr);
+                    const year = date.getFullYear();
+                    const month = date.getMonth() + 1;
+                    const monthStart = new Date(year, month - 1, 1);
+                    const monthEnd = new Date(year, month, 1); // 次月の1日 = 今月の終わり
+                    
+                    return allData.filter(item => {
+                        const itemDate = new Date(item.timestamp);
+                        return itemDate >= monthStart && itemDate < monthEnd;
+                    });
                 default:
                     return [];
             }
@@ -721,8 +752,26 @@
             }
             
             const newDateStr = newDate.toISOString().substring(0, 10);
+            const oldYear = currentYear;
             currentYear = newDate.getFullYear();
             currentMonth = newDate.getMonth() + 1;
+            
+            // 年が変わった場合は年セレクターも更新
+            if (oldYear !== currentYear) {
+                const yearSelector = document.getElementById('yearSelector');
+                if (yearSelector) {
+                    // 新しい年のオプションが存在するか確認
+                    const yearExists = Array.from(yearSelector.options).some(option => option.value == currentYear);
+                    if (yearExists) {
+                        yearSelector.value = currentYear;
+                    } else {
+                        // 新しい年のオプションがない場合は年セレクターを再初期化
+                        initializeYearSelector();
+                        yearSelector.value = currentYear;
+                    }
+                }
+            }
+            
             selectDate(newDateStr);
             updateNavigationButtons();
         }
@@ -786,55 +835,101 @@
             }
         }
         
+        function getAvailableYears() {
+            if (!allData || allData.length === 0) return [];
+            
+            const years = new Set();
+            allData.forEach(item => {
+                const year = new Date(item.timestamp).getFullYear();
+                years.add(year);
+            });
+            
+            return Array.from(years).sort((a, b) => b - a); // 新しい年から古い年へ
+        }
+        
         function generateHeatmap() {
             const heatmap = document.getElementById('heatmap');
             heatmap.innerHTML = '';
             
+            const availableYears = getAvailableYears();
+            if (availableYears.length === 0) {
+                heatmap.innerHTML = '<div style="text-align: center; color: #666; padding: 40px;">データがありません</div>';
+                return;
+            }
+            
             const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
             
-            for (let month = 1; month <= 12; month++) {
-                const monthDiv = document.createElement('div');
-                monthDiv.className = 'heatmap-month';
-                monthDiv.textContent = months[month - 1];
-                heatmap.appendChild(monthDiv);
+            // 各年のヒートマップを生成（新しい年から古い年へ）
+            availableYears.forEach((year, yearIndex) => {
+                // 年コンテナを作成
+                const yearContainer = document.createElement('div');
+                yearContainer.className = 'heatmap-year';
                 
-                const daysInMonth = new Date(currentYear, month, 0).getDate();
+                // 年ヘッダーを追加
+                const yearHeader = document.createElement('div');
+                yearHeader.className = 'heatmap-year-header';
+                yearHeader.textContent = `${year}年`;
+                yearHeader.style.textAlign = 'center';
+                yearHeader.style.fontWeight = 'bold';
+                yearHeader.style.fontSize = '1.2em';
+                yearHeader.style.color = '#333';
+                yearHeader.style.padding = '10px 0';
+                yearHeader.style.width = '100%';
+                yearHeader.style.marginLeft = '0';
+                yearContainer.appendChild(yearHeader);
                 
-                for (let day = 1; day <= 31; day++) {
-                    const dayDiv = document.createElement('div');
-                    dayDiv.className = 'heatmap-day';
+                // 年のグリッドを作成
+                const yearGrid = document.createElement('div');
+                yearGrid.className = 'heatmap-year-grid';
+                
+                // 月別ヒートマップ
+                for (let month = 1; month <= 12; month++) {
+                    const monthDiv = document.createElement('div');
+                    monthDiv.className = 'heatmap-month';
+                    monthDiv.textContent = months[month - 1];
+                    yearGrid.appendChild(monthDiv);
                     
-                    if (day <= daysInMonth) {
-                        const dateStr = `${currentYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                        const dayData = getPeriodData(dateStr, 'day');
+                    const daysInMonth = new Date(year, month, 0).getDate();
+                    
+                    for (let day = 1; day <= 31; day++) {
+                        const dayDiv = document.createElement('div');
+                        dayDiv.className = 'heatmap-day';
                         
-                        if (dayData.length > 0) {
-                            const avgMoisture = dayData.reduce((sum, item) => sum + item.moisture_percent, 0) / dayData.length;
+                        if (day <= daysInMonth) {
+                            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            const dayData = getPeriodData(dateStr, 'day');
                             
-                            if (avgMoisture >= 80) {
-                                dayDiv.classList.add('level-4');
-                            } else if (avgMoisture >= 60) {
-                                dayDiv.classList.add('level-3');
-                            } else if (avgMoisture >= 40) {
-                                dayDiv.classList.add('level-2');
-                            } else if (avgMoisture >= 20) {
-                                dayDiv.classList.add('level-1');
+                            if (dayData.length > 0) {
+                                const avgMoisture = dayData.reduce((sum, item) => sum + item.moisture_percent, 0) / dayData.length;
+                                
+                                if (avgMoisture >= 80) {
+                                    dayDiv.classList.add('level-4');
+                                } else if (avgMoisture >= 60) {
+                                    dayDiv.classList.add('level-3');
+                                } else if (avgMoisture >= 40) {
+                                    dayDiv.classList.add('level-2');
+                                } else if (avgMoisture >= 20) {
+                                    dayDiv.classList.add('level-1');
+                                } else {
+                                    dayDiv.classList.add('level-0');
+                                }
+                                
+                                dayDiv.title = `${year}年${month}月${day}日: ${Math.round(avgMoisture)}%`;
+                                dayDiv.addEventListener('click', () => selectDate(dateStr));
                             } else {
                                 dayDiv.classList.add('level-0');
                             }
-                            
-                            dayDiv.title = `${month}/${day}: ${Math.round(avgMoisture)}%`;
-                            dayDiv.addEventListener('click', () => selectDate(dateStr));
                         } else {
                             dayDiv.classList.add('level-0');
                         }
-                    } else {
-                        dayDiv.classList.add('level-0');
+                        
+                        yearGrid.appendChild(dayDiv);
                     }
-                    
-                    heatmap.appendChild(dayDiv);
                 }
-            }
+                
+                yearContainer.appendChild(yearGrid);
+                heatmap.appendChild(yearContainer);
+            });
         }
         
         function updateChart() {
@@ -939,7 +1034,44 @@
             }
         });
         
+        function initializeYearSelector() {
+            const yearSelector = document.getElementById('yearSelector');
+            yearSelector.innerHTML = ''; // 既存のオプションをクリア
+            
+            const availableYears = getAvailableYears();
+            const realCurrentYear = new Date().getFullYear();
+            let defaultYear = realCurrentYear;
+            
+            if (availableYears.length > 0) {
+                // 最新データがある年をデフォルトに設定
+                defaultYear = availableYears[0]; // availableYearsは新しい年から古い年の順
+                
+                // データがある年のみ表示
+                availableYears.forEach(year => {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = year + '年';
+                    if (year === defaultYear) {
+                        option.selected = true;
+                    }
+                    yearSelector.appendChild(option);
+                });
+            } else {
+                // データがない場合は現在の年のみ表示
+                const option = document.createElement('option');
+                option.value = realCurrentYear;
+                option.textContent = realCurrentYear + '年';
+                option.selected = true;
+                yearSelector.appendChild(option);
+            }
+            
+            // デフォルト年をグローバル変数にも設定
+            currentYear = defaultYear;
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
+            initializeYearSelector();
+            
             const today = new Date();
             selectedDate = today.toISOString().substring(0, 10);
             currentYear = today.getFullYear();
