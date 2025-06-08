@@ -420,6 +420,7 @@
                 <h3>📅 期間選択</h3>
                 <select class="year-selector" id="yearSelector" onchange="changeYear()">
                     <option value="2024">2024年</option>
+                    <option value="2025" selected>2025年</option>
                 </select>
                 
                 <div class="period-selector">
@@ -504,7 +505,7 @@
     <script>
         let chart;
         let allData = [];
-        let currentYear = 2024;
+        let currentYear = 2025;
         let currentMonth = 12;
         let selectedDate = null;
         let selectedPeriod = 'day';
