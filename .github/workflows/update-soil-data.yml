@@ -4,6 +4,9 @@ on:
   repository_dispatch:
     types: [soil_data]
 
+permissions:
+  contents: write
+
 jobs:
   update-data:
     runs-on: ubuntu-latest
