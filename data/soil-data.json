@@ -18,5 +18,10 @@
     "timestamp": "1970-01-01T00:00:08.000Z",
     "raw_value": 2993,
     "moisture_percent": 0
+  },
+  {
+    "timestamp": "2025-06-08T13:45:16.000Z",
+    "raw_value": 2700,
+    "moisture_percent": 19
   }
 ]
