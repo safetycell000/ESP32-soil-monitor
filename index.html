@@ -621,6 +621,33 @@
                 
                 console.log('Data loaded:', allData.length, 'records');
                 
+                // 詳細デバッグログ追加
+                if (allData.length > 0) {
+                    console.log('=== データ詳細 ===');
+                    console.log('最初のデータ:', allData[0]);
+                    console.log('最新のデータ:', allData[allData.length - 1]);
+                    
+                    // 最新5件のデータを詳細表示
+                    console.log('=== 最新5件のデータ ===');
+                    const latest5 = allData.slice(-5);
+                    latest5.forEach((item, index) => {
+                        const jstDate = new Date(item.timestamp);
+                        const jstString = jstDate.toLocaleString('ja-JP', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit'
+                        });
+                        console.log(`${index + 1}. JST: ${jstString}, 含水率: ${item.moisture_percent}%, Raw: ${item.raw_value}`);
+                    });
+                    
+                    // 生JSONデータも表示
+                    console.log('=== 生JSONデータ (最新5件) ===');
+                    console.log(JSON.stringify(latest5, null, 2));
+                }
+                
                 if (allData.length === 0) {
                     document.getElementById('statusIndicator').textContent = '📊 データがありません';
                     document.getElementById('statusIndicator').className = 'status-indicator no-data';
