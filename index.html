@@ -519,7 +519,7 @@
                 <div class="chart-type-selector">
                     <div class="chart-type-btn active" onclick="selectChartType('timeline')">
                         <h4>📈 時系列グラフ</h4>
-                        <p>基本的な湿度変化</p>
+                        <p>基本的な含水率変化</p>
                     </div>
                     <div class="chart-type-btn" onclick="selectChartType('heatmap')">
                         <h4>🔥 ヒートマップ</h4>
@@ -533,7 +533,7 @@
     <div class="main-content" id="mainContent">
         <div class="header">
             <h1>🌱 ESP32 土壌監視システム</h1>
-            <p>リアルタイム土壌水分監視ダッシュボード</p>
+            <p>リアルタイム土壌含水率監視ダッシュボード</p>
         </div>
         
         <div class="selected-period-info">
@@ -544,7 +544,7 @@
             </div>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 16px;">
                 <div style="background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 4px 16px rgba(31, 38, 135, 0.15);">
-                    <div style="color: #6b7280; font-size: 0.875rem; margin-bottom: 8px; font-weight: 500;">土壌水分量</div>
+                    <div style="color: #6b7280; font-size: 0.875rem; margin-bottom: 8px; font-weight: 500;">土壌含水率</div>
                     <div id="avgMoisture" style="color: #2563eb; font-size: 1.75rem; font-weight: 700;">--</div>
                 </div>
                 <div style="background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 4px 16px rgba(31, 38, 135, 0.15);">
@@ -563,7 +563,7 @@
         </div>
         
         <div class="heatmap-container" id="heatmapContainer" style="display: none;">
-            <h3>🔥 年間湿度ヒートマップ</h3>
+            <h3>🔥 年間含水率ヒートマップ</h3>
             <div class="heatmap" id="heatmap">
             </div>
             <div style="margin-top: 15px; font-size: 0.9em; color: #666;">
@@ -583,7 +583,7 @@
                     <thead>
                         <tr>
                             <th>日本時間</th>
-                            <th>土壌水分量 [%]</th>
+                            <th>土壌含水率 [%]</th>
                             <th>生値 [digit]</th>
                         </tr>
                     </thead>
@@ -1031,7 +1031,7 @@
             
             const ctx = document.getElementById('moistureChart').getContext('2d');
             const chartData = createTimelineChart();
-            document.getElementById('chartTitle').textContent = '📊 土壌水分量変化';
+            document.getElementById('chartTitle').textContent = '📊 土壌含水率変化';
             
             // 期間に応じて時間軸の範囲を設定
             const timeRange = getTimeRange();
@@ -1053,7 +1053,7 @@
                             max: 100,
                             title: {
                                 display: true,
-                                text: '土壌水分量 (%)'
+                                text: '土壌含水率 (%)'
                             }
                         },
                         x: {
@@ -1142,7 +1142,7 @@
             return {
                 datasets: [
                     {
-                        label: '土壌水分量',
+                        label: '土壌含水率',
                         data: chartData,
                         borderColor: '#2196F3',
                         backgroundColor: 'rgba(33, 150, 243, 0.1)',
