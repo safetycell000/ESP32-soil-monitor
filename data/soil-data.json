@@ -1,0 +1,77 @@
+[
+  {
+    "timestamp": "2025-06-08T17:28:56.000Z",
+    "raw_value": 2730,
+    "moisture_percent": 17
+  },
+  {
+    "timestamp": "2025-06-08T17:30:10.000Z",
+    "raw_value": 2728,
+    "moisture_percent": 17
+  },
+  {
+    "timestamp": "2025-06-08T17:59:56.000Z",
+    "raw_value": 2723,
+    "moisture_percent": 17
+  },
+  {
+    "timestamp": "2025-06-08T18:29:56.000Z",
+    "raw_value": 2723,
+    "moisture_percent": 17
+  },
+  {
+    "timestamp": "2025-06-08T18:59:56.000Z",
+    "raw_value": 2701,
+    "moisture_percent": 19
+  },
+  {
+    "timestamp": "2025-06-08T19:29:59.000Z",
+    "raw_value": 2706,
+    "moisture_percent": 18
+  },
+  {
+    "timestamp": "2025-06-08T19:59:58.000Z",
+    "raw_value": 2696,
+    "moisture_percent": 19
+  },
+  {
+    "timestamp": "2025-06-08T20:29:54.000Z",
+    "raw_value": 2697,
+    "moisture_percent": 19
+  },
+  {
+    "timestamp": "2025-06-08T20:59:58.000Z",
+    "raw_value": 2701,
+    "moisture_percent": 19
+  },
+  {
+    "timestamp": "2025-06-08T21:29:59.000Z",
+    "raw_value": 2710,
+    "moisture_percent": 18
+  },
+  {
+    "timestamp": "2025-06-08T21:59:58.000Z",
+    "raw_value": 2688,
+    "moisture_percent": 20
+  },
+  {
+    "timestamp": "2025-06-08T22:30:00.000Z",
+    "raw_value": 2699,
+    "moisture_percent": 19
+  },
+  {
+    "timestamp": "2025-06-08T22:59:57.000Z",
+    "raw_value": 2705,
+    "moisture_percent": 19
+  },
+  {
+    "timestamp": "2025-06-08T23:29:58.000Z",
+    "raw_value": 2710,
+    "moisture_percent": 18
+  },
+  {
+    "timestamp": "2025-06-08T23:59:58.000Z",
+    "raw_value": 2708,
+    "moisture_percent": 18
+  }
+]
