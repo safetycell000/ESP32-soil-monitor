@@ -630,12 +630,13 @@
                     document.getElementById('statusIndicator').style.background = '#e8f5e8';
                     document.getElementById('statusIndicator').style.color = '#2e7d32';
                     
-                    // 最新データの日付を初期選択日に設定
+                    // 最新データの日付を初期選択日に設定（JST基準）
                     const latestData = allData[allData.length - 1];
                     const latestDate = new Date(latestData.timestamp);
-                    currentYear = latestDate.getFullYear();
-                    currentMonth = latestDate.getMonth() + 1;
-                    selectedDate = latestData.timestamp.substring(0, 10);
+                    const jstLatestDate = new Date(latestDate.getTime() + 9 * 60 * 60 * 1000); // UTC+9
+                    currentYear = jstLatestDate.getFullYear();
+                    currentMonth = jstLatestDate.getMonth() + 1;
+                    selectedDate = jstLatestDate.toISOString().substring(0, 10);
                 }
                 
                 initializeYearSelector(); // データ読み込み後に年セレクターを更新
@@ -770,25 +771,34 @@
             
             switch(period) {
                 case 'day':
-                    return allData.filter(item => item.timestamp.startsWith(dateStr));
+                    // JST基準で日付フィルタリング
+                    return allData.filter(item => {
+                        const itemDate = new Date(item.timestamp);
+                        const jstDate = new Date(itemDate.getTime() + 9 * 60 * 60 * 1000); // UTC+9
+                        const jstDateStr = jstDate.toISOString().substring(0, 10);
+                        return jstDateStr === dateStr;
+                    });
                 case 'week':
-                    const startDate = new Date(dateStr);
+                    // JST基準で週間フィルタリング
+                    const startDate = new Date(dateStr + 'T00:00:00+09:00'); // JST
                     const endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000);
                     return allData.filter(item => {
                         const itemDate = new Date(item.timestamp);
-                        return itemDate >= startDate && itemDate < endDate;
+                        const jstDate = new Date(itemDate.getTime() + 9 * 60 * 60 * 1000);
+                        return jstDate >= startDate && jstDate < endDate;
                     });
                 case 'month':
-                    // 月表示では指定月の全データを取得（年またぎ対応）
-                    const date = new Date(dateStr);
+                    // JST基準で月間フィルタリング
+                    const date = new Date(dateStr + 'T00:00:00+09:00'); // JST
                     const year = date.getFullYear();
                     const month = date.getMonth() + 1;
                     const monthStart = new Date(year, month - 1, 1);
-                    const monthEnd = new Date(year, month, 1); // 次月の1日 = 今月の終わり
+                    const monthEnd = new Date(year, month, 1);
                     
                     return allData.filter(item => {
                         const itemDate = new Date(item.timestamp);
-                        return itemDate >= monthStart && itemDate < monthEnd;
+                        const jstDate = new Date(itemDate.getTime() + 9 * 60 * 60 * 1000);
+                        return jstDate >= monthStart && jstDate < monthEnd;
                     });
                 default:
                     return [];
