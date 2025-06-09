@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🌱 ESP32 土壌監視システム</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -1037,6 +1038,9 @@
             const chartData = createTimelineChart();
             document.getElementById('chartTitle').textContent = '📊 土壌水分量変化';
             
+            // 期間に応じて時間軸の範囲を設定
+            const timeRange = getTimeRange();
+            
             chart = new Chart(ctx, {
                 type: 'line',
                 data: chartData,
@@ -1051,16 +1055,37 @@
                     scales: {
                         y: {
                             min: 0,
-                            max: 40,
+                            max: 100,
                             title: {
                                 display: true,
                                 text: '土壌水分量 (%)'
                             }
                         },
                         x: {
+                            type: 'time',
+                            min: timeRange.min,
+                            max: timeRange.max,
+                            time: {
+                                unit: 'hour',
+                                stepSize: 0.5,
+                                displayFormats: {
+                                    hour: 'HH:mm'
+                                },
+                                tooltipFormat: 'MM/DD HH:mm'
+                            },
                             title: {
                                 display: true,
                                 text: '時刻'
+                            },
+                            ticks: {
+                                callback: function(value, index, values) {
+                                    const date = new Date(value);
+                                    const minutes = date.getMinutes();
+                                    if (minutes === 0 || minutes === 30) {
+                                        return date.toLocaleTimeString('ja-JP', {hour: '2-digit', minute: '2-digit'});
+                                    }
+                                    return '';
+                                }
                             }
                         }
                     }
@@ -1068,56 +1093,69 @@
             });
         }
         
+        function getTimeRange() {
+            if (!selectedDate) return { min: null, max: null };
+            
+            // JST基準で日付を作成
+            const year = parseInt(selectedDate.substring(0, 4));
+            const month = parseInt(selectedDate.substring(5, 7)) - 1; // 月は0ベース
+            const day = parseInt(selectedDate.substring(8, 10));
+            
+            switch(selectedPeriod) {
+                case 'day':
+                    // JST 00:00～23:30
+                    const dayStart = new Date(year, month, day, 0, 0, 0);
+                    const dayEnd = new Date(year, month, day, 23, 30, 0);
+                    return {
+                        min: dayStart,
+                        max: dayEnd
+                    };
+                case 'week':
+                    // 選択日から7日間
+                    const weekStart = new Date(year, month, day, 0, 0, 0);
+                    const weekEnd = new Date(year, month, day + 6, 23, 30, 0);
+                    return {
+                        min: weekStart,
+                        max: weekEnd
+                    };
+                case 'month':
+                    // 月の1日00:00～月末23:30 (JST)
+                    const monthStart = new Date(year, month, 1, 0, 0, 0);
+                    const monthEnd = new Date(year, month + 1, 0, 23, 30, 0);
+                    return {
+                        min: monthStart,
+                        max: monthEnd
+                    };
+                default:
+                    return { min: null, max: null };
+            }
+        }
+        
         function createTimelineChart() {
             const data = getPeriodData(selectedDate, selectedPeriod);
             
-            let labels;
-            
-            switch(selectedPeriod) {
-                case 'day':
-                    labels = data.map(item => {
-                        const date = new Date(item.timestamp);
-                        return date.toLocaleTimeString('ja-JP', {hour: '2-digit', minute: '2-digit'});
-                    });
-                    break;
-                case 'week':
-                    labels = data.filter((_, index) => index % 16 === 0).map(item => {
-                        const date = new Date(item.timestamp);
-                        return date.toLocaleDateString('ja-JP', {month: '2-digit', day: '2-digit'});
-                    });
-                    break;
-                case 'month':
-                    labels = data.filter((_, index) => index % 48 === 0).map(item => {
-                        const date = new Date(item.timestamp);
-                        return date.toLocaleDateString('ja-JP', {month: '2-digit', day: '2-digit'});
-                    });
-                    break;
-            }
-            
-            let displayData;
-            
-            switch(selectedPeriod) {
-                case 'day':
-                    displayData = data.map(item => item.moisture_percent);
-                    break;
-                case 'week':
-                    displayData = data.filter((_, index) => index % 16 === 0).map(item => item.moisture_percent);
-                    break;
-                case 'month':
-                    displayData = data.filter((_, index) => index % 48 === 0).map(item => item.moisture_percent);
-                    break;
-            }
+            // x軸を時間軸として扱うため、散布図として作成
+            const chartData = data.map(item => {
+                // データはUTC形式なので、直接Dateオブジェクトとして使用
+                // ブラウザが自動的にローカルタイムゾーン（JST）で表示する
+                const date = new Date(item.timestamp);
+                return {
+                    x: date,
+                    y: item.moisture_percent
+                };
+            });
             
             return {
-                labels: labels,
                 datasets: [
                     {
                         label: '土壌水分量',
-                        data: displayData,
+                        data: chartData,
                         borderColor: '#2196F3',
                         backgroundColor: 'rgba(33, 150, 243, 0.1)',
                         fill: true,
-                        tension: 0.4
+                        tension: 0.4,
+                        pointRadius: 3,
+                        pointHoverRadius: 5
                     }
                 ]
             };
