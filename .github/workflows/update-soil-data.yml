@@ -42,16 +42,23 @@ jobs:
           const fs = require('fs');
           const data = JSON.parse(fs.readFileSync('data/soil-data.json', 'utf8'));
           
-          // ESP32のJSTタイムスタンプを直接JST形式文字列に変換
+          // ESP32のJSTタイムスタンプをJST時刻として直接処理
           const esp32Time = parseInt('$ESP32_TIMESTAMP');
           const jstDate = new Date(esp32Time * 1000);
-          const year = jstDate.getFullYear();
-          const month = String(jstDate.getMonth() + 1).padStart(2, '0');
-          const day = String(jstDate.getDate()).padStart(2, '0');
-          const hour = String(jstDate.getHours()).padStart(2, '0');
-          const minute = String(jstDate.getMinutes()).padStart(2, '0');
-          const second = String(jstDate.getSeconds()).padStart(2, '0');
-          const timestamp = year + '-' + month + '-' + day + 'T' + hour + ':' + minute + ':' + second + '.000';
+          // toLocaleStringでJST時刻として取得
+          const jstString = jstDate.toLocaleString('ja-JP', {
+            timeZone: 'Asia/Tokyo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+          });
+          // YYYY/MM/DD HH:mm:ss 形式から YYYY-MM-DDTHH:mm:ss.000 形式に変換
+          const [datePart, timePart] = jstString.split(' ');
+          const timestamp = datePart.replace(/\//g, '-') + 'T' + timePart + '.000';
           
           const newEntry = {
             timestamp: timestamp,
