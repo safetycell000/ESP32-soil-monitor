@@ -544,7 +544,7 @@
             </div>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 16px;">
                 <div style="background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 4px 16px rgba(31, 38, 135, 0.15);">
-                    <div style="color: #6b7280; font-size: 0.875rem; margin-bottom: 8px; font-weight: 500;">平均湿度</div>
+                    <div style="color: #6b7280; font-size: 0.875rem; margin-bottom: 8px; font-weight: 500;">土壌水分量</div>
                     <div id="avgMoisture" style="color: #2563eb; font-size: 1.75rem; font-weight: 700;">--</div>
                 </div>
                 <div style="background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 4px 16px rgba(31, 38, 135, 0.15);">
@@ -778,7 +778,6 @@
                 case 'day':
                     // JST基準で日付フィルタリング（データが既にJST形式）
                     return allData.filter(item => {
-                        // JST形式タイムスタンプから直接日付を抽出
                         const jstDateStr = item.timestamp.substring(0, 10);
                         return jstDateStr === dateStr;
                     });
@@ -1132,7 +1131,7 @@
             
             // x軸を時間軸として扱うため、散布図として作成
             const chartData = data.map(item => {
-                // データはJST形式（+09:00）なので、直接Dateオブジェクトとして使用
+                // データはJST形式（タイムゾーン情報なし）なので、直接使用
                 const date = new Date(item.timestamp);
                 return {
                     x: date,

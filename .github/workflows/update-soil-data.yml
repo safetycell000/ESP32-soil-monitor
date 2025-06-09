@@ -42,10 +42,10 @@ jobs:
           const fs = require('fs');
           const data = JSON.parse(fs.readFileSync('data/soil-data.json', 'utf8'));
           
-          // ESP32のtimestamp（JST）をJST形式のISO文字列に変換
+          // ESP32のtimestamp（JST）をそのままJST形式で保存
           const esp32Time = parseInt('$ESP32_TIMESTAMP');
           const jstDate = new Date(esp32Time * 1000);
-          const timestamp = jstDate.toISOString().replace('Z', '+09:00');
+          const timestamp = jstDate.toISOString().replace('Z', '');
           
           const newEntry = {
             timestamp: timestamp,

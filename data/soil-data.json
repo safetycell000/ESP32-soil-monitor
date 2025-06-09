@@ -1,116 +1,116 @@
 [
   {
-    "timestamp": "2025-06-09T02:28:56.000+09:00",
+    "timestamp": "2025-06-09T02:28:56.000",
     "raw_value": 2730,
     "moisture_percent": 17
   },
   {
-    "timestamp": "2025-06-09T02:30:10.000+09:00",
+    "timestamp": "2025-06-09T02:30:10.000",
     "raw_value": 2728,
     "moisture_percent": 17
   },
   {
-    "timestamp": "2025-06-09T02:59:56.000+09:00",
+    "timestamp": "2025-06-09T02:59:56.000",
     "raw_value": 2723,
     "moisture_percent": 17
   },
   {
-    "timestamp": "2025-06-09T03:29:56.000+09:00",
+    "timestamp": "2025-06-09T03:29:56.000",
     "raw_value": 2723,
     "moisture_percent": 17
   },
   {
-    "timestamp": "2025-06-09T03:59:56.000+09:00",
+    "timestamp": "2025-06-09T03:59:56.000",
     "raw_value": 2701,
     "moisture_percent": 19
   },
   {
-    "timestamp": "2025-06-09T04:29:59.000+09:00",
+    "timestamp": "2025-06-09T04:29:59.000",
     "raw_value": 2706,
     "moisture_percent": 18
   },
   {
-    "timestamp": "2025-06-09T04:59:58.000+09:00",
+    "timestamp": "2025-06-09T04:59:58.000",
     "raw_value": 2696,
     "moisture_percent": 19
   },
   {
-    "timestamp": "2025-06-09T05:29:54.000+09:00",
+    "timestamp": "2025-06-09T05:29:54.000",
     "raw_value": 2697,
     "moisture_percent": 19
   },
   {
-    "timestamp": "2025-06-09T05:59:58.000+09:00",
+    "timestamp": "2025-06-09T05:59:58.000",
     "raw_value": 2701,
     "moisture_percent": 19
   },
   {
-    "timestamp": "2025-06-09T06:29:59.000+09:00",
+    "timestamp": "2025-06-09T06:29:59.000",
     "raw_value": 2710,
     "moisture_percent": 18
   },
   {
-    "timestamp": "2025-06-09T06:59:58.000+09:00",
+    "timestamp": "2025-06-09T06:59:58.000",
     "raw_value": 2688,
     "moisture_percent": 20
   },
   {
-    "timestamp": "2025-06-09T07:30:00.000+09:00",
+    "timestamp": "2025-06-09T07:30:00.000",
     "raw_value": 2699,
     "moisture_percent": 19
   },
   {
-    "timestamp": "2025-06-09T07:59:57.000+09:00",
+    "timestamp": "2025-06-09T07:59:57.000",
     "raw_value": 2705,
     "moisture_percent": 19
   },
   {
-    "timestamp": "2025-06-09T08:29:58.000+09:00",
+    "timestamp": "2025-06-09T08:29:58.000",
     "raw_value": 2710,
     "moisture_percent": 18
   },
   {
-    "timestamp": "2025-06-09T08:59:58.000+09:00",
+    "timestamp": "2025-06-09T08:59:58.000",
     "raw_value": 2708,
     "moisture_percent": 18
   },
   {
-    "timestamp": "2025-06-09T09:29:59.000+09:00",
+    "timestamp": "2025-06-09T09:29:59.000",
     "raw_value": 2698,
     "moisture_percent": 19
   },
   {
-    "timestamp": "2025-06-09T10:30:01.000+09:00",
+    "timestamp": "2025-06-09T10:30:01.000",
     "raw_value": 2697,
     "moisture_percent": 19
   },
   {
-    "timestamp": "2025-06-09T10:59:59.000+09:00",
+    "timestamp": "2025-06-09T10:59:59.000",
     "raw_value": 2697,
     "moisture_percent": 19
   },
   {
-    "timestamp": "2025-06-09T02:30:10.000Z",
+    "timestamp": "2025-06-09T11:30:10.000",
     "raw_value": 2706,
     "moisture_percent": 18
   },
   {
-    "timestamp": "2025-06-09T02:59:59.000+09:00",
+    "timestamp": "2025-06-09T11:59:59.000",
     "raw_value": 2670,
     "moisture_percent": 21
   },
   {
-    "timestamp": "2025-06-09T03:29:55.000+09:00",
+    "timestamp": "2025-06-09T12:29:55.000",
     "raw_value": 2674,
     "moisture_percent": 21
   },
   {
-    "timestamp": "2025-06-09T04:00:02.000+09:00",
+    "timestamp": "2025-06-09T13:00:02.000",
     "raw_value": 2668,
     "moisture_percent": 21
   },
   {
-    "timestamp": "2025-06-09T04:29:59.000+09:00",
+    "timestamp": "2025-06-09T13:29:59.000",
     "raw_value": 2639,
     "moisture_percent": 23
   }
