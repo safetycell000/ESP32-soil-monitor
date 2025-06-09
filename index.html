@@ -751,8 +751,13 @@
                 
                 const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 
-                // データがある日をハイライト
-                const dayData = allData.filter(item => item.timestamp.startsWith(dateStr));
+                // データがある日をハイライト（JST基準）
+                const dayData = allData.filter(item => {
+                    const itemDate = new Date(item.timestamp);
+                    const jstDate = new Date(itemDate.getTime() + 9 * 60 * 60 * 1000); // UTC+9
+                    const jstDateStr = jstDate.toISOString().substring(0, 10);
+                    return jstDateStr === dateStr;
+                });
                 if (dayData.length > 0) {
                     div.classList.add('has-data');
                 }
