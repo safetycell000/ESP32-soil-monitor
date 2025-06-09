@@ -631,13 +631,13 @@
                     document.getElementById('statusIndicator').style.background = '#e8f5e8';
                     document.getElementById('statusIndicator').style.color = '#2e7d32';
                     
-                    // 最新データの日付を初期選択日に設定（JST基準）
+                    // 最新データの日付を初期選択日に設定（データが既にJST形式）
                     const latestData = allData[allData.length - 1];
-                    const latestDate = new Date(latestData.timestamp);
-                    const jstLatestDate = new Date(latestDate.getTime() + 9 * 60 * 60 * 1000); // UTC+9
-                    currentYear = jstLatestDate.getFullYear();
-                    currentMonth = jstLatestDate.getMonth() + 1;
-                    selectedDate = jstLatestDate.toISOString().substring(0, 10);
+                    // JST形式タイムスタンプから直接日付を抽出
+                    selectedDate = latestData.timestamp.substring(0, 10);
+                    const dateParts = selectedDate.split('-');
+                    currentYear = parseInt(dateParts[0]);
+                    currentMonth = parseInt(dateParts[1]);
                 }
                 
                 initializeYearSelector(); // データ読み込み後に年セレクターを更新
@@ -752,11 +752,10 @@
                 
                 const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 
-                // データがある日をハイライト（JST基準）
+                // データがある日をハイライト（データが既にJST形式）
                 const dayData = allData.filter(item => {
-                    const itemDate = new Date(item.timestamp);
-                    const jstDate = new Date(itemDate.getTime() + 9 * 60 * 60 * 1000); // UTC+9
-                    const jstDateStr = jstDate.toISOString().substring(0, 10);
+                    // JST形式タイムスタンプから直接日付を抽出
+                    const jstDateStr = item.timestamp.substring(0, 10);
                     return jstDateStr === dateStr;
                 });
                 if (dayData.length > 0) {
@@ -777,25 +776,23 @@
             
             switch(period) {
                 case 'day':
-                    // JST基準で日付フィルタリング
+                    // JST基準で日付フィルタリング（データが既にJST形式）
                     return allData.filter(item => {
-                        const itemDate = new Date(item.timestamp);
-                        const jstDate = new Date(itemDate.getTime() + 9 * 60 * 60 * 1000); // UTC+9
-                        const jstDateStr = jstDate.toISOString().substring(0, 10);
+                        // JST形式タイムスタンプから直接日付を抽出
+                        const jstDateStr = item.timestamp.substring(0, 10);
                         return jstDateStr === dateStr;
                     });
                 case 'week':
                     // JST基準で週間フィルタリング
-                    const startDate = new Date(dateStr + 'T00:00:00+09:00'); // JST
+                    const startDate = new Date(dateStr + 'T00:00:00+09:00');
                     const endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000);
                     return allData.filter(item => {
                         const itemDate = new Date(item.timestamp);
-                        const jstDate = new Date(itemDate.getTime() + 9 * 60 * 60 * 1000);
-                        return jstDate >= startDate && jstDate < endDate;
+                        return itemDate >= startDate && itemDate < endDate;
                     });
                 case 'month':
                     // JST基準で月間フィルタリング
-                    const date = new Date(dateStr + 'T00:00:00+09:00'); // JST
+                    const date = new Date(dateStr + 'T00:00:00+09:00');
                     const year = date.getFullYear();
                     const month = date.getMonth() + 1;
                     const monthStart = new Date(year, month - 1, 1);
@@ -803,8 +800,7 @@
                     
                     return allData.filter(item => {
                         const itemDate = new Date(item.timestamp);
-                        const jstDate = new Date(itemDate.getTime() + 9 * 60 * 60 * 1000);
-                        return jstDate >= monthStart && jstDate < monthEnd;
+                        return itemDate >= monthStart && itemDate < monthEnd;
                     });
                 default:
                     return [];
@@ -1136,8 +1132,7 @@
             
             // x軸を時間軸として扱うため、散布図として作成
             const chartData = data.map(item => {
-                // データはUTC形式なので、直接Dateオブジェクトとして使用
-                // ブラウザが自動的にローカルタイムゾーン（JST）で表示する
+                // データはJST形式（+09:00）なので、直接Dateオブジェクトとして使用
                 const date = new Date(item.timestamp);
                 return {
                     x: date,
