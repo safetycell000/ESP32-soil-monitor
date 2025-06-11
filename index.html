@@ -1071,16 +1071,44 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            display: true
+                            display: true,
+                            onClick: function(e, legendItem, legend) {
+                                const index = legendItem.datasetIndex;
+                                const ci = legend.chart;
+                                if (ci.isDatasetVisible(index)) {
+                                    ci.hide(index);
+                                    legendItem.hidden = true;
+                                } else {
+                                    ci.show(index);
+                                    legendItem.hidden = false;
+                                }
+                            }
                         }
                     },
                     scales: {
                         y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
                             min: 0,
                             max: 100,
                             title: {
                                 display: true,
                                 text: '土壌含水率 (%)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            min: 0,
+                            max: 3000,
+                            title: {
+                                display: true,
+                                text: '生値 (digit)'
+                            },
+                            grid: {
+                                drawOnChartArea: false
                             }
                         },
                         x: {
@@ -1156,9 +1184,8 @@
         function createTimelineChart() {
             const data = getPeriodData(selectedDate, selectedPeriod);
             
-            // x軸を時間軸として扱うため、散布図として作成
-            const chartData = data.map(item => {
-                // データはJST形式（タイムゾーン情報なし）なので、直接使用
+            // %データの作成
+            const percentData = data.map(item => {
                 const date = new Date(item.timestamp);
                 return {
                     x: date,
@@ -1166,17 +1193,40 @@
                 };
             });
             
+            // 生値データの作成
+            const rawData = data.map(item => {
+                const date = new Date(item.timestamp);
+                return {
+                    x: date,
+                    y: item.raw_value
+                };
+            });
+            
             return {
                 datasets: [
                     {
-                        label: '土壌含水率',
-                        data: chartData,
+                        label: '土壌含水率 [%]',
+                        data: percentData,
                         borderColor: '#2196F3',
                         backgroundColor: 'rgba(33, 150, 243, 0.1)',
                         fill: true,
                         tension: 0.4,
                         pointRadius: 3,
-                        pointHoverRadius: 5
+                        pointHoverRadius: 5,
+                        yAxisID: 'y',
+                        hidden: true  // デフォルトで非表示
+                    },
+                    {
+                        label: '生値 [digit]',
+                        data: rawData,
+                        borderColor: '#FF9800',
+                        backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        yAxisID: 'y1',
+                        hidden: false  // デフォルトで表示
                     }
                 ]
             };
@@ -1262,6 +1312,58 @@
             currentYear = defaultYear;
         }
         
+        // スワイプジェスチャーの実装
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+        
+        function handleSwipe() {
+            const diffX = touchEndX - touchStartX;
+            const diffY = touchEndY - touchStartY;
+            const minSwipeDistance = 100;
+            const maxVerticalDiff = 100;
+            
+            // 垂直方向の移動が大きすぎる場合は無視
+            if (Math.abs(diffY) > maxVerticalDiff) return;
+            
+            const sidebar = document.getElementById('sidebar');
+            const isOpen = !sidebar.classList.contains('closed');
+            
+            // 左スワイプでサイドバーを閉じる（サイドバーが開いている時）
+            if (diffX < -minSwipeDistance && isOpen) {
+                closeSidebar();
+            }
+            // 右スワイプでサイドバーを開く（サイドバーが閉じている時かつ画面左端から）
+            else if (diffX > minSwipeDistance && !isOpen && touchStartX < 50) {
+                openSidebar();
+            }
+        }
+        
+        // サイドバーのスワイプイベント
+        document.getElementById('sidebar').addEventListener('touchstart', function(e) {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+        
+        document.getElementById('sidebar').addEventListener('touchend', function(e) {
+            touchEndX = e.changedTouches[0].screenX;
+            touchEndY = e.changedTouches[0].screenY;
+            handleSwipe();
+        }, { passive: true });
+        
+        // メインコンテンツ（左端）のスワイプイベント
+        document.getElementById('mainContent').addEventListener('touchstart', function(e) {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+        
+        document.getElementById('mainContent').addEventListener('touchend', function(e) {
+            touchEndX = e.changedTouches[0].screenX;
+            touchEndY = e.changedTouches[0].screenY;
+            handleSwipe();
+        }, { passive: true });
+
         document.addEventListener('DOMContentLoaded', function() {
             initializeYearSelector();
             
