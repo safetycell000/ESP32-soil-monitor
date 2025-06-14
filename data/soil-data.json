@@ -1318,5 +1318,10 @@
     "timestamp": "2025-06-14T21:59:57.000",
     "raw_value": 1583,
     "moisture_percent": 82
+  },
+  {
+    "timestamp": "2025-06-14T22:30:02.000",
+    "raw_value": 1596,
+    "moisture_percent": 82
   }
 ]
